@@ -1,33 +1,69 @@
 package router
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 )
 
+const ANY = "ANY"
+
+//启动引擎
 type Engine struct {
-	router Router
+	//这里也可以不使用指针，使用指针是担心后续传递engine.Router变成值传递而不是传递的指针
+	*Router
+	port string
 }
 
-func NewEngine() *Engine {
+//构建应用
+func NewEngine(port string) *Engine {
 	return &Engine{
-		router: Router{handlerMap: make(map[string]Handlerfunc)},
+		&Router{},
+		port,
 	}
 }
 
-/*
-	加载路由，启动http服务
-*/
+//加载路由，启动http服务
 func (e *Engine) Run() {
-	for s, v := range e.router.handlerMap {
-		http.HandleFunc(s, v)
-	}
-	err := http.ListenAndServe(":8080", nil)
+	http.HandleFunc("/", e.ServeHTTP)
+	err := http.ListenAndServe(":"+e.port, nil)
 	if err != nil {
 		log.Fatalln(err)
 	}
 }
 
-func (e *Engine) AddRouter(url string, handlerfunc Handlerfunc) {
-	e.router.handlerMap[url] = handlerfunc
+//公用的http处理
+func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	gr := e.Router.gr
+	//方法类型
+	method := r.Method
+	//请求地址
+	url := r.RequestURI
+	for _, groupRouter := range gr {
+		groupName := groupRouter.groupName
+		for groupUrl, methodMap := range groupRouter.handlerMap {
+			methodUrl := "/" + groupName + groupUrl
+			if methodUrl == url {
+				//优先处理ANY的请求
+				handlerfunc, ok := methodMap[ANY]
+				if ok {
+					handlerfunc(w, r)
+					return
+				}
+				//处理get\post\delet
+				handlerfunc, ok = methodMap[method]
+				if ok {
+					handlerfunc(w, r)
+					return
+				}
+				//如果根据方法类型获取不到则是非法的类型
+				w.WriteHeader(http.StatusNotFound)
+				fmt.Fprintln(w, r.RequestURI+" not found 405")
+				return
+			}
+		}
+	}
+	//找不到handler 404
+	w.WriteHeader(http.StatusNotFound)
+	fmt.Fprintln(w, r.RequestURI+" not found 404")
 }

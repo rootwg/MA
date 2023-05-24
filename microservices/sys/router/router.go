@@ -1,9 +1,7 @@
 package router
 
-import "net/http"
-
 //处理请求的类型接口
-type Handlerfunc func(w http.ResponseWriter, r *http.Request)
+type Handlerfunc func(ctx *Context)
 
 //路由
 type Router struct {

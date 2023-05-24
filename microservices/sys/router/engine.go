@@ -39,6 +39,9 @@ func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	method := r.Method
 	//请求地址
 	url := r.RequestURI
+	ctx := &Context{
+		w, r,
+	}
 	for _, groupRouter := range gr {
 		groupName := groupRouter.groupName
 		for groupUrl, methodMap := range groupRouter.handlerMap {
@@ -47,13 +50,13 @@ func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				//优先处理ANY的请求
 				handlerfunc, ok := methodMap[ANY]
 				if ok {
-					handlerfunc(w, r)
+					handlerfunc(ctx)
 					return
 				}
 				//处理get\post\delet
 				handlerfunc, ok = methodMap[method]
 				if ok {
-					handlerfunc(w, r)
+					handlerfunc(ctx)
 					return
 				}
 				//如果根据方法类型获取不到则是非法的类型

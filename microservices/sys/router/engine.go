@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 )
 
 const ANY = "ANY"
@@ -37,36 +38,51 @@ func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	gr := e.Router.gr
 	//方法类型
 	method := r.Method
-	//请求地址
+	//请求地址 //user/hello
 	url := r.RequestURI
 	ctx := &Context{
 		w, r,
 	}
 	for _, groupRouter := range gr {
+		//user
 		groupName := groupRouter.groupName
-		for groupUrl, methodMap := range groupRouter.handlerMap {
-			methodUrl := "/" + groupName + groupUrl
-			if methodUrl == url {
-				//优先处理ANY的请求
-				handlerfunc, ok := methodMap[ANY]
-				if ok {
-					handlerfunc(ctx)
-					return
-				}
-				//处理get\post\delet
-				handlerfunc, ok = methodMap[method]
-				if ok {
-					handlerfunc(ctx)
-					return
-				}
-				//如果根据方法类型获取不到则是非法的类型
-				w.WriteHeader(http.StatusNotFound)
-				fmt.Fprintln(w, r.RequestURI+" not found 405")
+		//获取方法url
+		mothedUrl := SubStringLast(url, "/"+groupName)
+		//获取方法url是否存在
+		node := groupRouter.treeNode.Get(mothedUrl)
+		if node != nil {
+			methodMap := groupRouter.handlerMap[mothedUrl]
+			//user/hello
+			//优先处理ANY的请求
+			handlerfunc, ok := methodMap[ANY]
+			if ok {
+				handlerfunc(ctx)
 				return
 			}
+			//处理get\post\delet
+			handlerfunc, ok = methodMap[method]
+			if ok {
+				handlerfunc(ctx)
+				return
+			}
+			//如果根据方法类型获取不到则是非法的类型
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprintln(w, r.RequestURI+" not found 405")
+			return
 		}
 	}
 	//找不到handler 404
 	w.WriteHeader(http.StatusNotFound)
 	fmt.Fprintln(w, r.RequestURI+" not found 404")
+}
+func SubStringLast(str string, substr string) string {
+	//先查找有没有  0
+	index := strings.Index(str, substr)
+	if index == -1 {
+		return ""
+	}
+	//5
+	len := len(substr)
+	//5 -最后  /hello
+	return str[index+len:]
 }

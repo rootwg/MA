@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 )
 
 const ANY = "ANY"
@@ -13,15 +14,25 @@ const ANY = "ANY"
 type Engine struct {
 	//这里也可以不使用指针，使用指针是担心后续传递engine.Router变成值传递而不是传递的指针
 	*Router
-	port string
+	port string    //端口
+	pool sync.Pool //池化
 }
 
 //构建应用
 func NewEngine(port string) *Engine {
-	return &Engine{
-		&Router{},
-		port,
+	engine := &Engine{
+		Router: &Router{},
+		port:   port,
 	}
+
+	engine.pool.New = func() any {
+		return engine.allocateContext()
+	}
+	return engine
+}
+
+func (e *Engine) allocateContext() any {
+	return &Context{engin: e}
 }
 
 //加载路由，启动http服务
@@ -35,14 +46,18 @@ func (e *Engine) Run() {
 
 //公用的http处理
 func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := e.pool.Get().(*Context)
+	ctx.W = w
+	ctx.R = r
+	e.handleHttpRequest(ctx)
+	e.pool.Put(ctx)
+}
+func (e *Engine) handleHttpRequest(ctx *Context) {
 	gr := e.Router.gr
 	//方法类型
-	method := r.Method
+	method := ctx.R.Method
 	//请求地址 //user/hello
-	url := r.RequestURI
-	ctx := &Context{
-		w, r,
-	}
+	url := ctx.R.RequestURI
 	for _, groupRouter := range gr {
 		//user
 		groupName := groupRouter.groupName
@@ -66,14 +81,14 @@ func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			//如果根据方法类型获取不到则是非法的类型
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintln(w, r.RequestURI+" not found 405")
+			ctx.W.WriteHeader(http.StatusNotFound)
+			fmt.Fprintln(ctx.W, ctx.R.RequestURI+" not found 405")
 			return
 		}
 	}
 	//找不到handler 404
-	w.WriteHeader(http.StatusNotFound)
-	fmt.Fprintln(w, r.RequestURI+" not found 404")
+	ctx.W.WriteHeader(http.StatusNotFound)
+	fmt.Fprintln(ctx.W, ctx.R.RequestURI+" not found 404")
 }
 func SubStringLast(str string, substr string) string {
 	//先查找有没有  0

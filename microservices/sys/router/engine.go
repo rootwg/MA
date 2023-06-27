@@ -15,7 +15,7 @@ type Engine struct {
 	//这里也可以不使用指针，使用指针是担心后续传递engine.Router变成值传递而不是传递的指针
 	*Router
 	port string    //端口
-	pool sync.Pool //池化
+	pool sync.Pool //上下文池化
 }
 
 //构建应用

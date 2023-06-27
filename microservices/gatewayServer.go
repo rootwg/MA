@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"os"
 	"studentDemo/sys/router"
 )
 
@@ -21,7 +22,10 @@ func main() {
 		user := &User{
 			Name: "测试html",
 		}
-		ctx.HtmlTemplate("login.html", template.FuncMap{}, user, "D:\\spaceWork\\go\\MA\\microservices\\sys\\router\\tpl\\login.html", "D:\\spaceWork\\go\\MA\\microservices\\sys\\router\\tpl\\header.html")
+		dir, _ := os.Getwd()
+		fmt.Printf("========")
+		fmt.Printf(dir)
+		ctx.HtmlTemplate("login.html", template.FuncMap{}, user, dir+"/tpl/login.html", dir+"/tpl/header.html")
 	})
 	userGroup.AddGet("/userInfo", func(ctx *router.Context) {
 		_ = ctx.JSON(http.StatusOK, &User{

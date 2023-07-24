@@ -31,6 +31,7 @@ func NewEngine(port string) *Engine {
 	return engine
 }
 
+//获取一个上下文对象
 func (e *Engine) allocateContext() any {
 	return &Context{engin: e}
 }

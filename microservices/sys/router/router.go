@@ -14,6 +14,7 @@ func (r *Router) Group(name string) *GroupRouter {
 	g := &GroupRouter{
 		groupName:  name,
 		handlerMap: make(map[string]map[string]Handlerfunc),
+		treeNode:   &treeNode{},
 	}
 	r.gr = append(r.gr, g)
 	return g

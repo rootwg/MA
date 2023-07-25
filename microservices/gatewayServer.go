@@ -2,23 +2,36 @@ package main
 
 import (
 	"fmt"
+	"html/template"
+	"net/http"
+	"os"
 	"studentDemo/sys/router"
 )
 
+type User struct {
+	Name string
+}
+
 func main() {
+	//modoule
 	engine := router.NewEngine("8080")
 	//添加分组user
 	userGroup := engine.Group("user")
-	userGroup.AddAny("/hello", func(ctx *router.Context) {
-		fmt.Fprintln(ctx.W, "any user hello mszlu.com")
+	userGroup.AddGet("/index", func(ctx *router.Context) {
+		fmt.Println("index handler")
+		user := &User{
+			Name: "测试html",
+		}
+		dir, _ := os.Getwd()
+		fmt.Printf("========")
+		fmt.Printf(dir)
+		ctx.HtmlTemplate("login.html", template.FuncMap{}, user, dir+"/tpl/login.html", dir+"/tpl/header.html")
 	})
-	//userGroup.AddGet("/hello2", func(w http.ResponseWriter, r *http.Request) {
-	//	fmt.Fprintln(w, "get user hello2  mszlu.com")
-	//})
-	userGroup.AddPost("/hello2", func(ctx *router.Context) {
-		fmt.Fprintln(ctx.W, "post user hello2  mszlu.com")
+	userGroup.AddGet("/userInfo", func(ctx *router.Context) {
+		_ = ctx.JSON(http.StatusOK, &User{
+			Name: "测试json",
+		})
 	})
-
 	//启动
 	engine.Run()
 }
